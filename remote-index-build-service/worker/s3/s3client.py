@@ -138,7 +138,7 @@ def upload_file(file_path, object_key, bucket_name, metadata=None):
         metadata: Optional metadata dictionary
     """
     file_size = os.path.getsize(file_path)
-
+    object_key = f"vectors/{object_key}"
     try:
         # Initialize multipart upload
         response = s3_client.create_multipart_upload(

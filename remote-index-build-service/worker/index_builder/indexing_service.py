@@ -10,7 +10,7 @@ from models.data_model import CreateIndexRequest, CreateIndexResponse
 
 logger = logging.getLogger(__name__)
 # Keeping number of threads 1 here to ensure that we are not creating more than 1 indexing job
-executor = ThreadPoolExecutor(max_workers=1)
+executor = ThreadPoolExecutor(max_workers=6)
 
 @dataclass
 class JobDetails:

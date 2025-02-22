@@ -36,8 +36,9 @@ def build_index_and_upload_index(createIndexRequest: CreateIndexRequest):
 
 @timer_func
 def create_index(dataset: VectorsDataset, createIndexRequest:CreateIndexRequest):
-    index_file = f"{createIndexRequest.objectLocation}.faiss"
-    index_file_path = "/tmp/"
+    index_file = createIndexRequest.objectLocation.split("/")[1]
+    index_file = index_file.split(".")[0]
+    index_file_path = f"/tmp/"
     space_type = createIndexRequest.spaceType
     create_index_stats = {}
     if index_type == IndexTypes.CPU:
@@ -47,7 +48,7 @@ def create_index(dataset: VectorsDataset, createIndexRequest:CreateIndexRequest)
         hnsw_params = {}
         create_index_stats = create_index(dataset, hnsw_params, space_type, index_file_path)
     elif index_type == IndexTypes.GPU:
-        index_file = f"{index_file}.{index_type.value}"
+        index_file = f"{index_file}.faiss"
         index_file_path = index_file_path + index_file
         indexing_params = {}
         from index_builder.gpu.create_gpu_index import create_index
