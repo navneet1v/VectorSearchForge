@@ -33,7 +33,7 @@ def create_index(vectorsDataset:VectorsDataset, indexingParams:dict, space_type:
 
     cagraIndexConfig.build_algo = faiss.graph_build_algo_IVF_PQ
     cagraIndexIVFPQConfig = faiss.IVFPQBuildCagraConfig()
-    cagraIndexIVFPQConfig.kmeans_n_iters = 0.5 if indexingParams.get('kmeans_n_iters') == None else indexingParams['kmeans_n_iters']
+    cagraIndexIVFPQConfig.kmeans_n_iters = 10 if indexingParams.get('kmeans_n_iters') == None else indexingParams['kmeans_n_iters']
     # instead of 32 bits per dim, you are using only 8 bits per dim
     cagraIndexIVFPQConfig.pq_bits = 8 if indexingParams.get('pq_bits') == None else indexingParams['pq_bits']
     #cagraIndexIVFPQConfig.pq_dim = 16 if indexingParams.get('pq_dim') == None else indexingParams['pq_dim']
@@ -45,7 +45,7 @@ def create_index(vectorsDataset:VectorsDataset, indexingParams:dict, space_type:
     # So this is a 32x compression.
 
     cagraIndexIVFPQConfig.n_lists = int(math.sqrt(dataset_size)) if indexingParams.get('n_lists') == None else indexingParams['n_lists']
-    cagraIndexIVFPQConfig.kmeans_trainset_fraction = 10 if indexingParams.get('kmeans_trainset_fraction') == None else indexingParams['kmeans_trainset_fraction']
+    cagraIndexIVFPQConfig.kmeans_trainset_fraction = 0.5 if indexingParams.get('kmeans_trainset_fraction') == None else indexingParams['kmeans_trainset_fraction']
     cagraIndexIVFPQConfig.conservative_memory_allocation = True
     cagraIndexConfig.ivf_pq_params = cagraIndexIVFPQConfig
 
