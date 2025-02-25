@@ -58,6 +58,7 @@ class IndexingService:
             )
             # create the index
             graph_file, stats = build_index_and_upload_index(create_index_request)
+            logging.info("Final create ")
 
             result = CreateIndexResponse(bucketName=create_index_request.bucketName, graphFileLocation=graph_file, stats=stats)
 

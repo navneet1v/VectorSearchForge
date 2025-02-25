@@ -3,6 +3,10 @@ from dataclasses import dataclass
 import numpy as np
 from models.data_model import CreateIndexRequest
 import s3.s3client as s3
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -20,11 +24,15 @@ class VectorsDataset:
         if not s3.check_s3_object_exists(createIndexRequest.bucketName, createIndexRequest.objectLocation):
             raise TypeError(f"{createIndexRequest.objectLocation} does not exist in the bucket : {createIndexRequest.bucketName}")
         vector_file = s3.download_s3_file_in_chunks(createIndexRequest.bucketName, createIndexRequest.objectLocation)
-        return VectorsDataset.__parse(vector_file, createIndexRequest.dimensions, createIndexRequest.numberOfVectors)
+        ids_file_object_location = f"{createIndexRequest.objectLocation.split('.')[0]}.knndid"
+        ids_file = s3.download_s3_file_in_chunks(createIndexRequest.bucketName, ids_file_object_location)
+        vector_dataset = VectorsDataset.__parse(vector_file, createIndexRequest.dimensions, createIndexRequest.numberOfVectors, ids_file)
+        logger.info(f"Deleting the donwnloaded file {vector_file}")
+        os.remove(vector_file)
+        return vector_dataset
 
     @staticmethod
-    def __parse(vector_file: str, dimension: int, number_of_vectors: int,
-            id_dtype: str = '<i8', vector_dtype: str = '<f4'):
+    def __parse(vector_file: str, dimension: int, number_of_vectors: int, ids_file: str, id_dtype: str = '<i8', vector_dtype: str = '<f4'):
         """
         Parse binary vector data from a file into a VectorsDataset object.
 
@@ -36,6 +44,7 @@ class VectorsDataset:
             vector_file (str): Path to the binary file containing vector data.
             dimension (int): Number of dimensions for each vector.
             number_of_vectors (int): Total number of vectors to read from the file.
+            ids_file (str): path to the binary file containing ids
             id_dtype (str, optional): NumPy dtype for reading IDs.
                 Defaults to '<i8' (little-endian 64-bit integer).
             vector_dtype (str, optional): NumPy dtype for reading vector values.
@@ -74,7 +83,15 @@ class VectorsDataset:
             - Vector array: number_of_vectors * dimension * sizeof(vector_dtype)
             - ID array: number_of_vectors * sizeof(id_dtype)
         """
+        vectors = None
 
+        with open(ids_file, 'rb') as f:
+            ids = np.fromfile(f, dtype=np.int32, count=number_of_vectors)
+            if len(ids) != number_of_vectors:
+                raise ValueError(
+                    f"Expected ids to be {number_of_vectors} values, "
+                    f"but got {len(ids)}"
+                )
 
         with open(vector_file, 'rb') as f:
             vectors = np.fromfile(f, dtype=vector_dtype,
@@ -86,8 +103,6 @@ class VectorsDataset:
                     f"but got {len(vectors)}"
                 )
 
-                # Reshape the vectors array
+            # Reshape the vectors array
             vectors = vectors.reshape(number_of_vectors, dimension)
-            # TODO: Take these ids from S3.
-            ids = np.array(range(number_of_vectors), dtype=np.int32)
-            return VectorsDataset(vectors=vectors, dimensions=dimension, ids=ids)
+        return VectorsDataset(vectors=vectors, dimensions=dimension, ids=ids)
