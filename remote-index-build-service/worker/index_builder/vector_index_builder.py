@@ -37,7 +37,7 @@ def build_index_and_upload_index(createIndexRequest: CreateIndexRequest):
 @timer_func
 def create_index(dataset: VectorsDataset, createIndexRequest:CreateIndexRequest):
     index_file = createIndexRequest.objectLocation.split("/")[1]
-    index_file = index_file.split(".")[0]
+    index_file = index_file.split(".knnvec")[0]
     index_file_path = f"/tmp/"
     space_type = createIndexRequest.spaceType
     create_index_stats = {}

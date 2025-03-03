@@ -24,7 +24,7 @@ class VectorsDataset:
         if not s3.check_s3_object_exists(createIndexRequest.bucketName, createIndexRequest.objectLocation):
             raise TypeError(f"{createIndexRequest.objectLocation} does not exist in the bucket : {createIndexRequest.bucketName}")
         vector_file = s3.download_s3_file_in_chunks(createIndexRequest.bucketName, createIndexRequest.objectLocation)
-        ids_file_object_location = f"{createIndexRequest.objectLocation.split('.')[0]}.knndid"
+        ids_file_object_location = createIndexRequest.objectLocation.replace(".knnvec", ".knndid")
         ids_file = s3.download_s3_file_in_chunks(createIndexRequest.bucketName, ids_file_object_location)
         vector_dataset = VectorsDataset.__parse(vector_file, createIndexRequest.dimensions, createIndexRequest.numberOfVectors, ids_file)
         logger.info(f"Deleting the donwnloaded file {vector_file}")
