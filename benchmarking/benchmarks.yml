@@ -1,0 +1,33 @@
+gpu:
+  ms-marco-384:
+    dataset_name: ms-marco-384
+    download_url: "https://huggingface.co/datasets/navneet1v/datasets/resolve/main/ms_marco-384-1m.hdf5?download=true"
+    normalize: false
+    indexing-parameters:
+      - { "refine_rate": 2, "kmeans_trainset_fraction": 0.1 }
+      - { "refine_rate": 2, "kmeans_trainset_fraction": 0.2 }
+      - { "refine_rate": 2, "kmeans_trainset_fraction": 0.4 }
+      - { "refine_rate": 2, "kmeans_trainset_fraction": 0.5 }
+      - { "refine_rate": 3, "kmeans_trainset_fraction": 0.1 }
+      - { "refine_rate": 3, "kmeans_trainset_fraction": 0.2 }
+      - { "refine_rate": 3, "kmeans_trainset_fraction": 0.4 }
+      - { "refine_rate": 3, "kmeans_trainset_fraction": 0.5 }
+      - { "refine_rate": 4, "kmeans_trainset_fraction": 0.1 }
+      - { "refine_rate": 4, "kmeans_trainset_fraction": 0.2 }
+      - { "refine_rate": 4, "kmeans_trainset_fraction": 0.4 }
+      - { "refine_rate": 4, "kmeans_trainset_fraction": 0.5 }
+    search-parameters:
+      - {"ef_search": 256}
+cpu:
+  ms-marco-384:
+    dataset_name: ms-marco-384
+    download_url: "https://huggingface.co/datasets/navneet1v/datasets/resolve/main/ms_marco-384-1m.hdf5?download=true"
+    normalize: false
+    indexing-parameters:
+      - { "ef_construction": 100 }
+      - { "ef_construction": 256 }
+      - { "ef_construction": 512 }
+      - { "ef_construction": 640 }
+      - { "ef_construction": 1024 }
+    search-parameters:
+      - {"ef_search": 256}
