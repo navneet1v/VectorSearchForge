@@ -1,0 +1,5 @@
+flask==2.3.3
+waitress==3.0.2
+boto3==1.35.84
+numpy==1.26.4
+gunicorn==23.0.0
