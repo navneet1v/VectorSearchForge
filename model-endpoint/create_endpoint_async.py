@@ -24,9 +24,9 @@ print('Container image: ' + container)
 container = {
     'Image': container,
      "Environment": { 
-        #"IS_ASYNC" : "1",
+        "IS_ASYNC" : "1",
         "MODEL_SERVER_TIMEOUT": "3600",
-        "MODEL_SERVER_WORKERS": "1"
+        "MODEL_SERVER_WORKERS": "2"
         }
 }
 
@@ -37,8 +37,8 @@ create_model_response = sm_client.create_model(
 
 print("Model Arn: " + create_model_response['ModelArn'])
 
-max_endpoints = 100
-current_endpoint = 99
+max_endpoints = 99
+current_endpoint = 98
 max_instance_count = 10
 endpoints = [{"name": f"navneet-endpoint-async-{current_endpoint}"}]
 while current_endpoint < max_endpoints:
@@ -60,7 +60,7 @@ while current_endpoint < max_endpoints:
             "OutputConfig": {
                 "S3OutputPath": f"s3://remote-index-navneet-knn",
             },
-            "ClientConfig": {"MaxConcurrentInvocationsPerInstance": 5},
+            "ClientConfig": {"MaxConcurrentInvocationsPerInstance": 2},
         },
     )
 

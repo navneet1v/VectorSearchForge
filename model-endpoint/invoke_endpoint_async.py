@@ -19,7 +19,7 @@ payload = json.dumps(request_body)
 
 
 def invoke_endpoint(number):
-    endpoint_number = 99
+    endpoint_number = 98
     runtime_sm_client = boto3.client(service_name='sagemaker-runtime', region_name="us-west-2")
     response = runtime_sm_client.invoke_endpoint_async(
         EndpointName=f"navneet-endpoint-async-{endpoint_number}",
@@ -32,7 +32,7 @@ def invoke_endpoint(number):
     print(f"Thread: {number} OutputLocation: {output_location}")
 
 executor = ThreadPoolExecutor(max_workers=50)
-for i in range(5):
+for i in range(6):
     executor.submit(invoke_endpoint, i)
 
 # {

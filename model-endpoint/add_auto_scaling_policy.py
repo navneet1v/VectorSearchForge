@@ -66,21 +66,7 @@ def target_tracking_scaling_policy(endpoint_name, resource_id, max_instance_coun
             "MetricAggregationType": "Average", # The aggregation type for the CloudWatch metrics.
             "Cooldown": 30, # The amount of time, in seconds, to wait for a previous scaling activity to take effect. 
             "StepAdjustments": # A set of adjustments that enable you to scale based on the size of the alarm breach.
-            [ 
-                {
-                    "MetricIntervalLowerBound": 0.0,
-                    "MetricIntervalUpperBound": 15.0,
-                    "ScalingAdjustment": 10
-                },
-                {
-                    "MetricIntervalLowerBound": 15.0,
-                    "MetricIntervalUpperBound": 25.0,
-                    "ScalingAdjustment": 20
-                },
-                {
-                    "MetricIntervalLowerBound": 25.0,
-                    "ScalingAdjustment": 30
-                },
+            [
                 {
                     "MetricIntervalLowerBound": 0,
                     "ScalingAdjustment": 1
@@ -93,7 +79,7 @@ def target_tracking_scaling_policy(endpoint_name, resource_id, max_instance_coun
 
     response = cw_client.put_metric_alarm(
         AlarmName=f"scaling-from-zero-{endpoint['name']}",
-        MetricName='ApproximateBacklogSizePerInstance',
+        MetricName='HasBacklogWithoutCapacity',
         Namespace='AWS/SageMaker',
         Statistic='Average',
         EvaluationPeriods= 1,
@@ -114,7 +100,7 @@ def target_tracking_scaling_policy(endpoint_name, resource_id, max_instance_coun
     # aws application-autoscaling describe-scaling-activities   --service-namespace sagemaker
 
 
-def step_scaling_target_policy():
+def step_scaling_target_policy(endpoint_name, resource_id, max_instance_count):
     # Configure Autoscaling on asynchronous endpoint down to zero instances
     aas_client.register_scalable_target(
         ServiceNamespace="sagemaker",
@@ -133,14 +119,41 @@ def step_scaling_target_policy():
         ScalableDimension="sagemaker:variant:DesiredInstanceCount",  # SageMaker supports only Instance Count
         PolicyType="StepScaling",  # 'StepScaling'|'TargetTrackingScaling' # step scaling policy require a CW metrics
         StepScalingPolicyConfiguration={
-            "AdjustmentType": "ChangeInCapacity",
+            "AdjustmentType": "ExactCapacity",
             "MetricAggregationType": "Maximum",
             "Cooldown": 30,
             "StepAdjustments":
-            [
+            [ 
+                # This to scale to 0. we should move this as a separate policy.
+                # {
+                #     "MetricIntervalUpperBound": 0.9,
+                #     "MetricIntervalLowerBound": 0.0,
+                #     "ScalingAdjustment": 0
+                # },
+                # this is for scaling up
                 {
-                    "MetricIntervalLowerBound": 0,
-                    "ScalingAdjustment": 1 # you need to adjust this value based on your use case
+                    "MetricIntervalLowerBound": 0.9,
+                    "MetricIntervalUpperBound": 2.1,
+                    "ScalingAdjustment": 1
+                },
+                {
+                    "MetricIntervalLowerBound": 2.1,
+                    "MetricIntervalUpperBound": 4.1,
+                    "ScalingAdjustment": 2
+                },
+                {
+                    "MetricIntervalLowerBound": 4.1,
+                    "MetricIntervalUpperBound": 6.1,
+                    "ScalingAdjustment": 3
+                },
+                {
+                    "MetricIntervalLowerBound": 6.1,
+                    "MetricIntervalUpperBound": 8.1,
+                    "ScalingAdjustment": 4
+                },
+                {
+                    "MetricIntervalLowerBound": 8.1,
+                    "ScalingAdjustment": 10
                 }
             ]
         },
@@ -148,59 +161,89 @@ def step_scaling_target_policy():
 
 
     response = cw_client.put_metric_alarm(
-        AlarmName=f"scaling-up-policy-{endpoint['name']}",
-        MetricName='HasBacklogWithoutCapacity',
-        Namespace='AWS/SageMaker',
-        Statistic='Average',
+        AlarmName=f"combined-scaling-up-policy-{endpoint['name']}",
+        Metrics=[
+            {
+                "Label": "ApproximateBacklogSizePerInstance",
+                "Id": "m1",
+                "MetricStat": {
+                    "Metric": {
+                        "MetricName": "ApproximateBacklogSizePerInstance",
+                        "Namespace": "AWS/SageMaker",
+                        "Dimensions": [{"Name": "EndpointName", "Value": endpoint_name}],
+                    },
+                    "Stat": "Average",
+                    "Period": 60
+                },
+                "ReturnData": False
+            },
+            {
+                "Label": "Get the ECS running task count (the number of currently running tasks)",
+                "Id": "m2",
+                "MetricStat": {
+                    "Metric": {
+                        "MetricName": "HasBacklogWithoutCapacity",
+                        "Namespace": "AWS/SageMaker",
+                        "Dimensions": [{"Name": "EndpointName", "Value": endpoint_name}],
+                    },
+                    "Period": 60,
+                    "Stat": "Average"
+                },
+                "ReturnData": False
+            },
+            {
+                "Label": "Calculate should we do scaling or not",
+                "Id": "e1",
+                "Expression": "MAX([m1, m2])",
+                "ReturnData": True
+            }
+        ],
+        #Statistic='Average',
         EvaluationPeriods= 1,
         DatapointsToAlarm= 1,
-        Threshold= 1,
+        Threshold= 0.9,
         ComparisonOperator='GreaterThanOrEqualToThreshold',
         TreatMissingData='missing',
-        Dimensions=[
-            { 'Name':'EndpointName', 'Value':endpoint_name },
-        ],
-        Period= 60,
+        # Dimensions=[
+        #     { 'Name':'EndpointName', 'Value':endpoint_name },
+        # ],
+        #Period= 60,
         AlarmActions=[response["PolicyARN"]],  # Replace with your actual ARN
     )
+    print(f"Step Scaling Auto scaling policy for scale up and scale down added : {endpoint_name}")
 
-
-
-
-    print(f"Step Scaling Auto scaling policy for scale up added : {endpoint_name}")
-
-    # adding policy to scale from 0.
+    # lets write scale down policy
     response = aas_client.put_scaling_policy(
-        PolicyName="HasBacklogWithoutCapacity-ScalingPolicy",
-        ServiceNamespace="sagemaker",  # The namespace of the service that provides the resource.
+        PolicyName=f"Invocations-ScalingPolicy-down-{endpoint_name}",
+        ServiceNamespace="sagemaker",  # The namespace of the AWS service that provides the resource.
         ResourceId=resource_id,  # Endpoint name
         ScalableDimension="sagemaker:variant:DesiredInstanceCount",  # SageMaker supports only Instance Count
-        PolicyType="StepScaling",  # 'StepScaling' or 'TargetTrackingScaling'
+        PolicyType="StepScaling",  # 'StepScaling'|'TargetTrackingScaling' # step scaling policy require a CW metrics
         StepScalingPolicyConfiguration={
-            "AdjustmentType": "ChangeInCapacity", # Specifies whether the ScalingAdjustment value in the StepAdjustment property is an absolute number or a percentage of the current capacity. 
-            "MetricAggregationType": "Average", # The aggregation type for the CloudWatch metrics.
-            "Cooldown": 30, # The amount of time, in seconds, to wait for a previous scaling activity to take effect. 
-            "StepAdjustments": # A set of adjustments that enable you to scale based on the size of the alarm breach.
+            "AdjustmentType": "ExactCapacity",
+            "MetricAggregationType": "Maximum",
+            "Cooldown": 30,
+            "StepAdjustments":
             [ 
+                # This to scale to 0. we should move this as a separate policy.
                 {
-                    "MetricIntervalLowerBound": 0,
-                    "ScalingAdjustment": 1
+                    #"MetricIntervalUpperBound": 0.9,
+                    "MetricIntervalLowerBound": 0.0,
+                    "ScalingAdjustment": 0
                 }
             ]
-        },    
+        },
     )
-    
-    
 
     response = cw_client.put_metric_alarm(
-        AlarmName=f"scaling-from-zero-{endpoint['name']}",
-        MetricName='HasBacklogWithoutCapacity',
+        AlarmName=f"scaling-to-zero-{endpoint['name']}",
+        MetricName='ApproximateBacklogSize',
         Namespace='AWS/SageMaker',
         Statistic='Average',
-        EvaluationPeriods= 1,
-        DatapointsToAlarm= 1,
-        Threshold= 1,
-        ComparisonOperator='GreaterThanOrEqualToThreshold',
+        EvaluationPeriods= 10,
+        DatapointsToAlarm= 10,
+        Threshold= 0,
+        ComparisonOperator='LessThanOrEqualToThreshold',
         TreatMissingData='missing',
         Dimensions=[
             { 'Name':'EndpointName', 'Value':endpoint_name },
@@ -209,12 +252,12 @@ def step_scaling_target_policy():
         AlarmActions=[response["PolicyARN"]],  # Replace with your actual ARN
     )
 
-    print(f"Scale to zero metrics also added for {endpoint_name}")
+    print("scale down to 0 policy added")
 
 
 
 
-current_endpoint = 5
+current_endpoint = 98
 endpoint_name = f'navneet-endpoint-async-{current_endpoint}'
 
 endpoints = [
@@ -230,6 +273,4 @@ for endpoint in endpoints:
     resource_id = (
         "endpoint/" + endpoint_name + "/variant/" + "variant1"
     ) 
-    target_tracking_scaling_policy(endpoint_name, resource_id, max_instance_count) 
-
-
+    step_scaling_target_policy(endpoint_name, resource_id, max_instance_count) 
