@@ -91,7 +91,7 @@ def step_scaling_target_policy(endpoint_name, resource_id, max_instance_count):
                 'Value': endpoint_name
             }
         ],
-        Period=30,  # 1-minute evaluation
+        Period=60,  # 1-minute evaluation
         EvaluationPeriods=1,
         DatapointsToAlarm=1,
         Threshold=1.0,  # Trigger scale-up when backlog size >= 1

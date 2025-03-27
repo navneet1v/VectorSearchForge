@@ -32,7 +32,7 @@ def invoke_endpoint(number):
     print(f"Thread: {number} OutputLocation: {output_location}")
 
 executor = ThreadPoolExecutor(max_workers=50)
-for i in range(6):
+for i in range(100):
     executor.submit(invoke_endpoint, i)
 
 # {
