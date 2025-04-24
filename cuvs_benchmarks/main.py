@@ -2,6 +2,7 @@ import struct
 import os
 from numpy import float32
 import numpy as np
+import time
 
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum
@@ -299,26 +300,57 @@ def custom_excepthook(exc_type, exc_value, exc_traceback):
 # Install the custom exception handler
 sys.excepthook = custom_excepthook
 
-def indexAndSearchUsingCuvs(file):
+def indexAndSearchUsingCuvs():
     from cuvs.neighbors import cagra
     import cupy as cp
 
-    d, xb, ids = prepare_indexing_dataset(file)
-    index_params = cagra.IndexParams(intermediate_graph_degree=64,graph_degree=32,build_algo='ivf_pq', metric="sqeuclidean")
-    
-    index = cagra.build(index_params, xb)
+    workloads = [
+        {
+            "download_url": "https://huggingface.co/datasets/navneet1v/datasets/resolve/main/coherev2-dbpedia.hdf5?download=true",
+            "dataset_name": "coherev2-dbpedia",
+            "normalize": False
+        },
+        {
+            "download_url": "https://huggingface.co/datasets/navneet1v/datasets/resolve/main/FlickrImagesTextQueries.hdf5?download=true",
+            "dataset_name": "FlickrImagesTextQueries",
+            "normalize": True
+        },
+        {
+            "download_url": "https://huggingface.co/datasets/navneet1v/datasets/resolve/main/marco_tasb.hdf5?download=true",
+            "dataset_name": "marco_tasb",
+            "normalize": False
+        },
+        {
+            "download_url": "https://dbyiw3u3rf9yr.cloudfront.net/corpora/vectorsearch/cohere-wikipedia-22-12-en-embeddings/documents-1m.hdf5.bz2",
+            "dataset_name": "cohere-768-ip",
+            "compressed": True,
+            "compression-type": "bz2",
+            "normalize": False
+        }
+    ]
 
-    d, xq, gt = prepare_search_dataset(file)
-    
-    xq = cp.asarray(xq)
+    for workload in workloads:
 
-    search_params = cagra.SearchParams(itopk_size = 200)
-    distances, neighbors = cagra.search(search_params, index, xq, 100)
-    
-    logging.info("Search is done")
-    neighbors = cp.asnumpy(neighbors)
-    
-    logging.info(f"Recall at k=100 is : {recall_at_r(neighbors, gt, 100, 100, len(xq))}")
+        logging.info(f"Running for workload {workload['dataset_name']}")
+        file = downloadDataSetForWorkload(workload)
+        d, xb, ids = prepare_indexing_dataset(file, workload["normalize"])
+        index_params = cagra.IndexParams(intermediate_graph_degree=64,graph_degree=32,build_algo='ivf_pq', metric="inner_product")
+
+        index = cagra.build(index_params, xb)
+
+        d, xq, gt = prepare_search_dataset(file, workload["normalize"])
+
+        xq = cp.asarray(xq)
+
+        search_params = cagra.SearchParams(itopk_size = 200)
+        distances, neighbors = cagra.search(search_params, index, xq, 100)
+
+        logging.info("Search is done")
+        neighbors = cp.asnumpy(neighbors)
+
+        logging.info(f"Recall at k=100 is : {recall_at_r(neighbors, gt, 100, 100, len(xq))}")
+        logging.info("Sleeping for 5 seconds")
+        time.sleep(5)
 
 
 def indexAndSearchUsingFaiss(file, indexingParams={}):
@@ -387,18 +419,14 @@ def indexAndSearchUsingFaiss(file, indexingParams={}):
 
 if __name__ == "__main__":
     try:
-        workloadToExecute = {
-            "download_url": "https://huggingface.co/datasets/navneet1v/datasets/resolve/main/open-ai-1536-temp.hdf5?download=true",
-            "dataset_name": "open-ai-1536"
-        }
         # workloadToExecute = {
-        #     "dataset_name": "sift",
-        #     "download_url": "http://ann-benchmarks.com/sift-128-euclidean.hdf5"
+        #     "download_url": "https://huggingface.co/datasets/navneet1v/datasets/resolve/main/open-ai-1536-temp.hdf5?download=true",
+        #     "dataset_name": "open-ai-1536"
         # }
-        file = downloadDataSetForWorkload(workloadToExecute)
-        #indexAndSearchUsingCuvs(file)
+        # file = downloadDataSetForWorkload(workloadToExecute)
 
-        indexAndSearchUsingFaiss(file)
+        # indexAndSearchUsingFaiss(file)
+        indexAndSearchUsingCuvs()
     except Exception as e:
         logging.error("Error in main execution:", exc_info=True)
     

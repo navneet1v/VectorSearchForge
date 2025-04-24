@@ -1,4 +1,4 @@
-FROM opensearchstaging/remote-vector-index-builder:base-latest
+FROM opensearchstaging/remote-vector-index-builder:faiss-base-latest
 
 USER root
 RUN apt-get update && apt-get upgrade -y && apt-get install libjemalloc2
