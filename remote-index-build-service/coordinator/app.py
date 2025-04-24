@@ -124,7 +124,7 @@ def hello():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route('/create_index', methods=['POST'])
+@app.route('/_build', methods=['POST'])
 def create_index():
     try:
         input = request.json
@@ -141,8 +141,7 @@ def get_jobs():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route('/job/<string:job_id>')
+@app.route('/_status/<string:job_id>')
 def job(job_id: str):
     try:
         jobs = workerservice.get_job(job_id)

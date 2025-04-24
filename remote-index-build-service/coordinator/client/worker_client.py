@@ -46,11 +46,11 @@ class WorkerClient:
         self.worker = worker
 
     def get_job(self, job_id: str):
-        return self.client_pool.request("GET", f"/job/{job_id}", headers={'Content-Type': 'application/json'})
+        return self.client_pool.request("GET", f"/_status/{job_id}", headers={'Content-Type': 'application/json'})
 
     def create_index(self, createIndexRequest):
         self.logger.info(f"createIndexRequest is : {createIndexRequest}")
-        response = self.client_pool.request("POST", "/create_index", body=json.dumps(createIndexRequest), headers={'Content-Type': 'application/json'})
+        response = self.client_pool.request("POST", "/_build", body=json.dumps(createIndexRequest), headers={'Content-Type': 'application/json'})
         if response.status == 200 or response.status == 201:
             return response.json()
         return None
@@ -63,7 +63,7 @@ class WorkerClient:
 
     def heart_beat(self):
         try:
-            response = self.client_pool.request(method="GET", url="/heart_beat", headers={'Content-Type': 'application/json'})
+            response = self.client_pool.request(method="GET", url="/_heart_beat", headers={'Content-Type': 'application/json'})
             return response.status == 200
         except Exception as e:
             self.logger.error(f"Error in heart_beat for {self.worker.host}:{self.worker.port} : {e}")
