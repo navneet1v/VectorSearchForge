@@ -108,10 +108,6 @@ export class GpuWorkerStack extends cdk.Stack {
                     protocol: Protocol.TCP
                 }
             ],
-            entryPoint: [
-                "python",
-                "app.py"
-            ],
             environment: {
                 "COORDINATOR_NODE_URL": `${props?.loadBalancer.loadBalancerDnsName}`,
                 "PYTHONFAULTHANDLER": "1",
@@ -120,8 +116,8 @@ export class GpuWorkerStack extends cdk.Stack {
                 "COORDINATOR_NODE_PORT": "80",
                 "INDEX_BUILD_TYPE": "gpu"
             },
-            workingDirectory: "/app",
-            user: "appuser",
+            workingDirectory: "/remote_vector_index_builder",
+            user: "root",
             ulimits: [
                 {
                     name: ecs.UlimitName.CORE,
@@ -149,7 +145,7 @@ export class GpuWorkerStack extends cdk.Stack {
         // Request ECS to launch the task onto the fleet
         new ecs.Ec2Service(this, id + "gpu-service", {
             cluster,
-            desiredCount: 1,
+            desiredCount: 3,
             // Service will automatically request capacity from the
             // capacity provider
             capacityProviderStrategies: [
